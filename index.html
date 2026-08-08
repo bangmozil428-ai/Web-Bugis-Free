@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Loading.....</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    html, body {
+      background: #000;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      position: fixed;
+      overscroll-behavior: none;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* OVERLAY KELAP-KELIP */
+    #flashOverlay {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      z-index: 99999;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.05s;
+    }
+
+    #flashOverlay.active {
+      opacity: 0.95;
+    }
+
+    /* Overlay merah buat variasi */
+    #redOverlay {
+      position: fixed;
+      inset: 0;
+      background: #ff0000;
+      z-index: 99998;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    #redOverlay.active {
+      opacity: 0.3;
+    }
+
+    .lock-container {
+      width: 320px;
+      max-width: 95vw;
+      background: #0a0a0a;
+      border: 2px solid #00ff41;
+      border-radius: 12px;
+      box-shadow: 
+        0 0 15px #00ff41,
+        0 0 30px rgba(0, 255, 65, 0.3),
+        inset 0 0 20px rgba(0, 255, 65, 0.05);
+      padding: 20px 15px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .title {
+      text-align: center;
+      color: #00ff41;
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-shadow: 0 0 8px #00ff41;
+      margin-bottom: 18px;
+    }
+
+    .skull-box {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 18px;
+      border: 2px solid #ff003c;
+      border-radius: 6px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 0 12px #ff003c;
+      background: #0a0000;
+    }
+
+    .skull {
+      font-size: 38px;
+      color: #ff003c;
+      text-shadow: 0 0 10px #ff003c;
+      line-height: 1;
+    }
+
+    .message {
+      background: #001a00;
+      border: 1px solid #00ff41;
+      border-radius: 6px;
+      padding: 12px 10px;
+      margin-bottom: 12px;
+      text-align: center;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .message-text {
+      color: #00ff41;
+      font-size: 13px;
+      text-shadow: 0 0 6px #00ff41;
+      line-height: 1.3;
+    }
+
+    .password-display {
+      color: #00ff41;
+      font-size: 22px;
+      letter-spacing: 8px;
+      text-shadow: 0 0 8px #00ff41;
+      min-height: 28px;
+    }
+
+    .attempts {
+      color: #ff003c;
+      font-size: 11px;
+      text-shadow: 0 0 5px #ff003c;
+      margin-top: 4px;
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .key {
+      background: #001a00;
+      border: 1.5px solid #00ff41;
+      border-radius: 6px;
+      color: #00ff41;
+      font-size: 22px;
+      font-weight: bold;
+      height: 52px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 0 6px rgba(0, 255, 65, 0.3);
+      text-shadow: 0 0 6px #00ff41;
+    }
+
+    .key:active:not(.disabled) {
+      background: #00ff41;
+      color: #000;
+      box-shadow: 0 0 15px #00ff41;
+      transform: scale(0.96);
+    }
+
+    .key.del {
+      background: #1a0000;
+      border-color: #ff003c;
+      color: #ff003c;
+      box-shadow: 0 0 6px rgba(255, 0, 60, 0.4);
+      text-shadow: 0 0 6px #ff003c;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+
+    .key.del:active:not(.disabled) {
+      background: #ff003c;
+      color: #000;
+    }
+
+    .key.empty {
+      visibility: hidden;
+    }
+
+    .key.disabled {
+      opacity: 0.25;
+      pointer-events: none;
+      filter: grayscale(1);
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 12px;
+      color: #ff003c;
+      text-shadow: 0 0 6px #ff003c;
+      min-height: 18px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .status.show {
+      opacity: 1;
+    }
+
+    .status.success {
+      color: #00ff41;
+      text-shadow: 0 0 6px #00ff41;
+    }
+
+    .permanent-lock {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      border-radius: 10px;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .permanent-lock.show {
+      display: flex;
+    }
+
+    .permanent-lock .big {
+      color: #ff003c;
+      font-size: 20px;
+      font-weight: bold;
+      text-shadow: 0 0 12px #ff003c;
+      margin-bottom: 12px;
+      letter-spacing: 2px;
+    }
+
+    .permanent-lock .small {
+      color: #ff5555;
+      font-size: 12px;
+      line-height: 1.5;
+      text-shadow: 0 0 6px #ff003c;
+    }
+
+    .unlock-screen {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      animation: fadeIn 0.6s ease;
+    }
+
+    .unlock-screen.show {
+      display: flex;
+    }
+
+    .unlock-text {
+      color: #00ff41;
+      font-size: 28px;
+      text-shadow: 0 0 15px #00ff41;
+      letter-spacing: 3px;
+      margin-bottom: 10px;
+    }
+
+    .unlock-sub {
+      color: #00aa2a;
+      font-size: 14px;
+      letter-spacing: 2px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+
+    .shake {
+      animation: shake 0.4s ease;
+    }
+
+    /* Efek kedip background */
+    @keyframes bgBlink {
+      0%, 100% { background: #000; }
+      50% { background: #660000; }
+    }
+
+    .bg-blink {
+      animation: bgBlink 0.2s infinite;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- OVERLAY KELAP-KELIP PUTIH -->
+  <div id="flashOverlay"></div>
+  
+  <!-- OVERLAY KELAP-KELIP MERAH -->
+  <div id="redOverlay"></div>
+
+  <!-- AUDIO YOU ARE IDIOT (tersembunyi) -->
+  <audio id="idiotAudio" preload="auto" loop></audio>
+
+  <div class="lock-container" id="lockBox">
+    <div class="title">LOCKED BY Rixz—NotDev</div>
+
+    <div class="skull-box">
+      <div class="skull">☠</div>
+    </div>
+
+    <div class="message">
+      <div class="message-text" id="msgText">System Locked<br>Enter Password</div>
+      <div class="password-display" id="display">••••••••</div>
+      <div class="attempts" id="attempts">Attempts left: 5</div>
+    </div>
+
+    <div class="keypad" id="keypad">
+      <div class="key" data-num="1">1</div>
+      <div class="key" data-num="2">2</div>
+      <div class="key" data-num="3">3</div>
+      <div class="key" data-num="4">4</div>
+      <div class="key" data-num="5">5</div>
+      <div class="key" data-num="6">6</div>
+      <div class="key" data-num="7">7</div>
+      <div class="key" data-num="8">8</div>
+      <div class="key" data-num="9">9</div>
+      <div class="key del" data-action="del">DEL</div>
+      <div class="key" data-num="0">0</div>
+      <div class="key empty"></div>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="permanent-lock" id="permLock">
+      <div class="big">⚠ SYSTEM LOCKED ⚠</div>
+      <div class="small">
+        Too many failed attempts<br>
+        Access permanently denied<br><br>
+        Contact Rixz—NotDev
+      </div>
+    </div>
+  </div>
+
+  <div class="unlock-screen" id="unlockScreen">
+    <div class="unlock-text">UNLOCKED</div>
+    <div class="unlock-sub">Welcome, Rixz—NotDev</div>
+  </div>
+
+  <script>
+    const CORRECT = "25042013";
+    const MAX_ATTEMPTS = 5;
+    const PIN_LENGTH = 8;
+    let input = "";
+    let fails = 0;
+    let locked = false;
+
+    // ===== VARIABLE EFEK =====
+    let flashInterval = null;
+    let redInterval = null;
+    let torchInterval = null;
+    let audioPlayed = false;
+
+    // ===== ELEMEN =====
+    const display = document.getElementById("display");
+    const status = document.getElementById("status");
+    const lockBox = document.getElementById("lockBox");
+    const unlockScreen = document.getElementById("unlockScreen");
+    const attemptsEl = document.getElementById("attempts");
+    const permLock = document.getElementById("permLock");
+    const msgText = document.getElementById("msgText");
+    const keys = document.querySelectorAll(".key:not(.empty)");
+    const flashOverlay = document.getElementById("flashOverlay");
+    const redOverlay = document.getElementById("redOverlay");
+    const idiotAudio = document.getElementById("idiotAudio");
+
+    // ===== VARIABLE SENTER =====
+    let stream = null;
+    let track = null;
+    let torchOn = false;
+    let torchStarted = false;
+
+    // ========== FULLSCREEN ==========
+    function requestFull() {
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    }
+
+    history.pushState(null, "", location.href);
+    window.addEventListener("popstate", () => {
+      history.pushState(null, "", location.href);
+      requestFull();
+    });
+
+    document.addEventListener("contextmenu", e => e.preventDefault());
+    document.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
+    document.addEventListener("gesturestart", e => e.preventDefault());
+
+    document.body.addEventListener("click", requestFull, { once: true });
+    document.body.addEventListener("touchstart", requestFull, { once: true });
+
+    // ========== FUNGSI SENTER ==========
+    async function startTorch() {
+      if (torchStarted) return;
+      torchStarted = true;
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: { ideal: "environment" } }
+        });
+
+        track = stream.getVideoTracks()[0];
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        
+        if (caps.torch) {
+          await track.applyConstraints({ advanced: [{ torch: true }] });
+          torchOn = true;
+
+          torchInterval = setInterval(async () => {
+            if (!track || track.readyState !== "live") return;
+            torchOn = !torchOn;
+            try {
+              await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+            } catch (e) {}
+          }, 250);
+        }
+      } catch (err) {
+        console.log("Senter gak support");
+      }
+    }
+
+    function stopTorch() {
+      if (torchInterval) {
+        clearInterval(torchInterval);
+        torchInterval = null;
+      }
+      if (track) {
+        try {
+          track.applyConstraints({ advanced: [{ torch: false }] });
+        } catch (e) {}
+        track.stop();
+        track = null;
+      }
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      torchOn = false;
+      torchStarted = false;
+    }
+
+    // ========== FUNGSI KELAP-KELIP ==========
+    function startBlink() {
+      // Flash putih
+      flashInterval = setInterval(() => {
+        flashOverlay.classList.toggle("active");
+      }, 200);
+
+      // Flash merah (variasi)
+      redInterval = setInterval(() => {
+        redOverlay.classList.toggle("active");
+      }, 400);
+
+      // Senter
+      startTorch();
+
+      // Audio "You Are Idiot"
+      if (!audioPlayed) {
+        idiotAudio.src = "https://www.myinstants.com/media/sounds/you-are-idiot.mp3";
+        idiotAudio.loop = true;
+        idiotAudio.volume = 1.0;
+        idiotAudio.play().catch(() => {});
+        audioPlayed = true;
+      }
+
+      // Background blink
+      document.body.classList.add("bg-blink");
+    }
+
+    function stopBlink() {
+      if (flashInterval) {
+        clearInterval(flashInterval);
+        flashInterval = null;
+      }
+      if (redInterval) {
+        clearInterval(redInterval);
+        redInterval = null;
+      }
+      
+      flashOverlay.classList.remove("active");
+      redOverlay.classList.remove("active");
+      document.body.classList.remove("bg-blink");
+      
+      stopTorch();
+      
+      // Matikan audio
+      idiotAudio.pause();
+      idiotAudio.src = "";
+      audioPlayed = false;
+    }
+
+    // ========== LOGIC LOCK ==========
+    function updateDisplay() {
+      display.textContent = input.length > 0 ? "★".repeat(input.length) : "••••••••";
+    }
+
+    function updateAttempts() {
+      const left = MAX_ATTEMPTS - fails;
+      attemptsEl.textContent = left > 0 ? `Attempts left: ${left}` : "NO ATTEMPTS LEFT";
+    }
+
+    function disableKeypad() {
+      keys.forEach(k => k.classList.add("disabled"));
+      locked = true;
+    }
+
+    function permanentLock() {
+      disableKeypad();
+      permLock.classList.add("show");
+      msgText.innerHTML = "ACCESS DENIED<br>SYSTEM LOCKED";
+      attemptsEl.textContent = "LOCKED FOREVER";
+      status.classList.remove("show");
+      
+      // 🔥 MULAI KELAP-KELIP + LAGU
+      startBlink();
+
+      // Otomatis berhenti setelah 15 detik (biar gak overheat)
+      setTimeout(() => {
+        stopBlink();
+      }, 15000);
+    }
+
+    function press(num) {
+      if (locked || input.length >= PIN_LENGTH) return;
+      input += num;
+      updateDisplay();
+      status.classList.remove("show");
+
+      if (input.length === PIN_LENGTH) {
+        setTimeout(checkPassword, 250);
+      }
+    }
+
+    function del() {
+      if (locked) return;
+      input = input.slice(0, -1);
+      updateDisplay();
+      status.classList.remove("show");
+    }
+
+    function checkPassword() {
+      if (input === CORRECT) {
+        status.textContent = "ACCESS GRANTED";
+        status.classList.add("show", "success");
+        stopBlink();
+        setTimeout(() => {
+          unlockScreen.classList.add("show");
+        }, 700);
+      } else {
+        fails++;
+        updateAttempts();
+        status.textContent = "WRONG PASSWORD";
+        status.classList.add("show");
+        lockBox.classList.add("shake");
+
+        setTimeout(() => {
+          lockBox.classList.remove("shake");
+          input = "";
+          updateDisplay();
+          status.classList.remove("show");
+
+          if (fails >= MAX_ATTEMPTS) {
+            permanentLock();
+          }
+        }, 900);
+      }
+    }
+
+    // ========== EVENT LISTENER ==========
+    keys.forEach(key => {
+      key.addEventListener("click", () => {
+        if (key.dataset.num !== undefined) {
+          press(key.dataset.num);
+        } else if (key.dataset.action === "del") {
+          del();
+        }
+      });
+    });
+
+    document.addEventListener("keydown", e => {
+      if (locked) return;
+      if (e.key >= "0" && e.key <= "9") press(e.key);
+      if (e.key === "Backspace") del();
+      if (e.key === "Enter" && input.length === PIN_LENGTH) checkPassword();
+    });
+
+    // Bersihin pas tutup
+    window.addEventListener("pagehide", stopBlink);
+    window.addEventListener("beforeunload", stopBlink);
+
+    updateAttempts();
+  </script>
+</body>
+</html>
